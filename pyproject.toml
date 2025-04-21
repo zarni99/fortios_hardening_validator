@@ -1,0 +1,24 @@
+[build-system]
+requires = ["setuptools>=42.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "fortios_hardening_validator"
+version = "0.1.0"
+description = "A CLI tool to validate FortiOS hardening best practices"
+authors = [
+    {name = "User", email = "user@example.com"}
+]
+requires-python = ">=3.8"
+dependencies = [
+    "typer>=0.9.0",
+    "rich>=13.0.0",
+    "netmiko>=4.2.0",
+    "pydantic>=2.0.0",
+]
+
+[project.scripts]
+fortios-audit = "fortios_hardening_validator.fortios_hardening_validator.cli:app"
+
+[tool.setuptools]
+packages = ["fortios_hardening_validator"] 
