@@ -7,7 +7,7 @@ name = "fortios_hardening_validator"
 version = "0.1.0"
 description = "A CLI tool to validate FortiOS hardening best practices"
 authors = [
-    {name = "User", email = "user@example.com"}
+    {name = "Zarni (Neo)", email = "zarni.infosec@example.com"}
 ]
 requires-python = ">=3.8"
 dependencies = [

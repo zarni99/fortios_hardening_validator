@@ -142,13 +142,20 @@ fortios_hardening_validator/
 You can also use the package programmatically in your own Python scripts:
 
 ```python
+from getpass import getpass
 from fortios_hardening_validator.fortios_hardening_validator.ssh_connector import SSHConnector
 from fortios_hardening_validator.fortios_hardening_validator.config_fetcher import ConfigFetcher
 from fortios_hardening_validator.fortios_hardening_validator.hardening_checks import HardeningChecker
 from fortios_hardening_validator.fortios_hardening_validator.report_generator import ReportGenerator
 
+# Device connection parameters
+ip_address = "192.168.1.1"
+username = "admin"
+# Securely prompt for password
+password = getpass("Enter SSH password: ")
+
 # Connect to the device
-connector = SSHConnector("192.168.1.1", "admin", "password")
+connector = SSHConnector(ip_address, username, password)
 connector.connect()
 
 try:
@@ -163,7 +170,7 @@ try:
     
     # Generate reports
     device_info = {
-        "ip": "192.168.1.1",
+        "ip": ip_address,
         "hostname": "FortiGate-VM",
         "version": "v7.0.0",
     }
