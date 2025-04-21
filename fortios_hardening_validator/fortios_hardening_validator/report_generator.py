@@ -1,7 +1,7 @@
 """Report generator module for FortiOS Hardening Validator."""
 
 import json
-import io
+import textwrap
 from datetime import datetime
 from typing import Dict, List, Any
 
@@ -157,8 +157,8 @@ class ReportGenerator:
             
         self.console.print()
 
-    def generate_text_report(self) -> str:
-        """Generate a plain text report.
+    def _generate_text_report(self) -> str:
+        """Generate a plain text report (internal use only).
 
         Returns:
             str: Plain text report suitable for .txt files
@@ -166,26 +166,40 @@ class ReportGenerator:
         output = []
         counts = self._count_results_by_status()
         
+        # Set a consistent width for the entire report
+        report_width = 120
+        
+        # Fixed column widths for table - adjusted for better proportions
+        col_widths = {
+            "id": 12,
+            "name": 30,
+            "status": 10,
+            "details": 30,
+            "recommendation": 35
+        }
+        
         # Header
-        output.append("=" * 80)
-        output.append("                     FORTIOS HARDENING VALIDATOR REPORT")
-        output.append("=" * 80)
+        output.append("=" * report_width)
+        output.append(f"{'FORTIOS HARDENING VALIDATOR REPORT':^{report_width}}")
+        output.append("=" * report_width)
         output.append(f"Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
         output.append("")
         
         # Device information
-        output.append("-" * 80)
+        output.append("-" * report_width)
         output.append("DEVICE INFORMATION")
-        output.append("-" * 80)
+        output.append("-" * report_width)
         output.append(f"IP Address:      {self.device_info.get('ip', 'N/A')}")
         output.append(f"Hostname:        {self.device_info.get('hostname', 'N/A')}")
         output.append(f"FortiOS Version: {self.device_info.get('version', 'N/A')}")
+        if "version_info" in self.device_info and self.device_info["version_info"]:
+            output.append(f"Release Version Information: {self.device_info.get('version_info', 'N/A')}")
         output.append("")
         
         # Summary
-        output.append("-" * 80)
+        output.append("-" * report_width)
         output.append("SUMMARY")
-        output.append("-" * 80)
+        output.append("-" * report_width)
         output.append(f"Total checks: {len(self.results)}")
         output.append(f"PASS:         {counts[CheckStatus.PASS.value]}")
         output.append(f"FAIL:         {counts[CheckStatus.FAIL.value]}")
@@ -194,30 +208,67 @@ class ReportGenerator:
         output.append("")
         
         # Detailed results
-        output.append("-" * 80)
+        output.append("-" * report_width)
         output.append("HARDENING CHECK RESULTS")
-        output.append("-" * 80)
+        output.append("-" * report_width)
         
-        # Table headers with fixed width formatting
-        output.append(f"{'ID':<12} {'Name':<25} {'Status':<10} {'Details':<35} {'Recommendation':<35}")
-        output.append("-" * 120)
+        # Create a more precise row format with exact column widths
+        id_width = col_widths["id"]
+        name_width = col_widths["name"]
+        status_width = col_widths["status"]
+        details_width = col_widths["details"]
+        recommendation_width = col_widths["recommendation"]
         
-        # Table rows
+        # Table format template for consistent alignment
+        row_format = f"{{:<{id_width}}} {{:<{name_width}}} {{:<{status_width}}} {{:<{details_width}}} {{:<{recommendation_width}}}"
+        
+        # Add table header
+        output.append(row_format.format("ID", "Name", "Status", "Details", "Recommendation"))
+        output.append("-" * report_width)
+        
+        # Add rows with proper text wrapping for long fields
         for result in self.results:
-            # Format each column with appropriate width and wrapping
-            id_col = f"{result.id:<12}"
-            name_col = f"{result.name:<25}"
-            status_col = f"{result.status.value:<10}"
-            
-            # Handle potential wrapping for long text
             details = result.details or ""
             recommendation = result.recommendation or ""
             
-            # Add the row
-            output.append(f"{id_col} {name_col} {status_col} {details:<35} {recommendation:<35}")
+            # First line with all columns
+            output.append(row_format.format(
+                result.id,
+                textwrap.shorten(result.name, width=name_width-1, placeholder="..."),
+                result.status.value,
+                details[:details_width-1] + ("..." if len(details) > details_width-1 else ""),
+                recommendation[:recommendation_width-1] + ("..." if len(recommendation) > recommendation_width-1 else "")
+            ))
+            
+            # If details or recommendation is longer than the column width, add wrapped content
+            if len(details) > details_width-1 or len(recommendation) > recommendation_width-1:
+                # Prepare wrapped text for details and recommendation
+                wrapped_details = textwrap.wrap(details, width=details_width-1) if len(details) > details_width-1 else []
+                wrapped_recommendation = textwrap.wrap(recommendation, width=recommendation_width-1) if len(recommendation) > recommendation_width-1 else []
+                
+                # Determine how many extra lines we need
+                max_extra_lines = max(
+                    len(wrapped_details[1:]) if wrapped_details else 0,
+                    len(wrapped_recommendation[1:]) if wrapped_recommendation else 0
+                )
+                
+                # Add extra lines for wrapped content
+                for i in range(max_extra_lines):
+                    detail_line = wrapped_details[i+1] if i+1 < len(wrapped_details) else ""
+                    recommendation_line = wrapped_recommendation[i+1] if i+1 < len(wrapped_recommendation) else ""
+                    
+                    output.append(row_format.format(
+                        "",  # Empty ID column
+                        "",  # Empty Name column
+                        "",  # Empty Status column
+                        detail_line,
+                        recommendation_line
+                    ))
+            
+            # Add a separator line between each result for better readability
+            output.append("")
         
-        output.append("")
-        output.append("-" * 80)
+        output.append("-" * report_width)
         
         # Conclusion
         if counts[CheckStatus.FAIL.value] > 0 or counts[CheckStatus.WARNING.value] > 0:
@@ -225,7 +276,7 @@ class ReportGenerator:
         else:
             output.append("CONCLUSION: Congratulations! Your FortiGate device meets all hardening requirements.")
         
-        output.append("-" * 80)
+        output.append("-" * report_width)
         output.append("")
         
         return "\n".join(output)
@@ -269,16 +320,14 @@ class ReportGenerator:
         """Generate a report in the specified format.
 
         Args:
-            format: Report format ("cli", "json", or "txt")
+            format: Report format ("cli" or "json")
 
         Returns:
-            str: Report as a string for JSON or TXT format, empty string for CLI format
+            str: Report as a string for JSON format, empty string for CLI format
         """
         format = format.lower()
         if format == "json":
             return self.generate_json_report()
-        elif format == "txt":
-            return self.generate_text_report()
         else:
             self.generate_cli_report()
             return "" 

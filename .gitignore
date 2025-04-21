@@ -24,10 +24,6 @@ wheels/
 .installed.cfg
 *.egg
 
-# PyInstaller
-*.manifest
-*.spec
-
 # Installer logs
 pip-log.txt
 pip-delete-this-directory.txt
@@ -72,4 +68,16 @@ venv.bak/
 .idea/
 
 # Project specific
-*_hardening_report.json 
+*_hardening_report.json
+
+# Test files
+test_*.py
+test.txt
+sample_report.txt
+tmp/
+
+# Mac OS files
+.DS_Store
+.AppleDouble
+.LSOverride
+._* 

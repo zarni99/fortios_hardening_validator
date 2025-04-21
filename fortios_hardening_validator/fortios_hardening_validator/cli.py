@@ -1,7 +1,8 @@
 """CLI module for FortiOS Hardening Validator."""
 
 import sys
-from typing import Optional, List
+import re
+from typing import Optional, Dict, Any
 
 import typer
 from rich.console import Console
@@ -16,7 +17,7 @@ app = typer.Typer(help="Validate FortiOS hardening best practices.")
 console = Console()
 
 # List of valid output formats
-VALID_FORMATS = ["cli", "json", "txt"]
+VALID_FORMATS = ["cli", "json"]
 
 
 @app.command("audit")
@@ -51,18 +52,33 @@ def audit(
 
         # Fetch device information
         console.print("[bold]Fetching device information...[/bold]")
-        hostname = connector.execute_command("get system status | grep Hostname").strip()
-        if ":" in hostname:
-            hostname = hostname.split(":", 1)[1].strip()
         
-        version = connector.execute_command("get system status | grep Version").strip()
-        if ":" in version:
-            version = version.split(":", 1)[1].strip()
+        # Get system status information
+        system_status = connector.execute_command("get system status")
         
-        device_info = {
+        # Parse hostname
+        hostname = ""
+        hostname_match = re.search(r"Hostname:\s+(.+)", system_status)
+        if hostname_match:
+            hostname = hostname_match.group(1).strip()
+        
+        # Parse version
+        version = ""
+        version_match = re.search(r"Version:\s+(.+)", system_status)
+        if version_match:
+            version = version_match.group(1).strip()
+            
+        # Parse version info (like GA, Beta, etc.)
+        version_info = ""
+        version_info_match = re.search(r"Release Version Information:\s+(.+)", system_status)
+        if version_info_match:
+            version_info = version_info_match.group(1).strip()
+        
+        device_info: Dict[str, Any] = {
             "ip": ip,
             "hostname": hostname,
             "version": version,
+            "version_info": version_info
         }
 
         # Fetch and parse configuration
@@ -85,7 +101,7 @@ def audit(
         if output_file:
             console.print(f"[bold]Saving report to {output_file}...[/bold]")
             with open(output_file, "w") as f:
-                if format.lower() in ["json", "txt"]:
+                if format.lower() == "json":
                     f.write(report)
                 else:
                     # Capture console output for CLI format
@@ -105,8 +121,8 @@ def audit(
         # Disconnect
         connector.disconnect()
         
-        # Print report to console for JSON and TXT formats when not saving to file
-        if format.lower() in ["json", "txt"] and not output_file:
+        # Print report to console for JSON format when not saving to file
+        if format.lower() == "json" and not output_file:
             console.print(report)
 
     except Exception as e:
