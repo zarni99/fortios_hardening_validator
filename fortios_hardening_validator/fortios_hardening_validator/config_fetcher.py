@@ -123,7 +123,55 @@ class ConfigFetcher:
         if not self.parsed_config:
             self.parse_config()
         
-        admins = self.parsed_config.get('system', {}).get('admin', {}).get('entries', {})
+        # For deeper debugging, log the structure of the parsed config
+        admin_config = self.parsed_config.get('system', {}).get('admin', {})
+        
+        # This is a common structure in FortiOS config
+        admins = admin_config.get('entries', {})
+        
+        # If empty and we have raw config, look for evidence of admin config in raw text
+        if not admins and self.raw_config:
+            # Create a debugging log to help diagnose parsing issues
+            admin_sections = []
+            in_admin_section = False
+            admin_indent = 0
+            
+            for line in self.raw_config.splitlines():
+                stripped = line.strip()
+                
+                if not in_admin_section and "config system admin" in line:
+                    in_admin_section = True
+                    admin_indent = len(line) - len(line.lstrip())
+                    admin_sections.append(line)
+                elif in_admin_section:
+                    current_indent = len(line) - len(line.lstrip())
+                    admin_sections.append(line)
+                    
+                    # Check if we've exited the admin section
+                    if stripped == "end" and current_indent <= admin_indent:
+                        in_admin_section = False
+                        break
+            
+            # If we found admin sections but parsing didn't work, add debugging info
+            if admin_sections:
+                # Create a simple dictionary with admin user info based on raw text
+                manual_admins = {}
+                current_admin = None
+                
+                for line in admin_sections:
+                    stripped = line.strip()
+                    if stripped.startswith('edit '):
+                        admin_name = stripped[5:].strip('"\'')
+                        current_admin = admin_name
+                        manual_admins[current_admin] = {}
+                    elif current_admin and stripped.startswith('set two-factor '):
+                        value = stripped.replace('set two-factor ', '').strip('"\'')
+                        manual_admins[current_admin]['two-factor'] = value
+                
+                # If we found admins with our manual parsing, use those instead
+                if manual_admins:
+                    return manual_admins
+        
         return admins
 
     def get_vpn_ssl_settings(self) -> Dict[str, str]:

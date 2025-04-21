@@ -48,6 +48,9 @@ class HardeningChecker:
         """
         self.results = []
         
+        # Run debug check first to detect parsing issues
+        self.debug_config_parsing()
+        
         # Run all check methods
         self.check_password_policy()
         self.check_insecure_protocols()
@@ -60,6 +63,66 @@ class HardeningChecker:
         self.check_session_timeout()
         
         return self.results
+
+    def debug_config_parsing(self) -> CheckResult:
+        """Debug check to inspect configuration parsing.
+        
+        Returns:
+            CheckResult: Debug information about config parsing
+        """
+        # Check if the admin configuration is being parsed correctly
+        admin_config = self.config_fetcher.get_system_admin()
+        admin_count = len(admin_config)
+        
+        # Check for config system admin in raw config
+        raw_config = self.config_fetcher.raw_config
+        admin_section_count = raw_config.count("config system admin")
+        admin_edit_count = 0
+        
+        # Count how many admin users should be in the config
+        admin_lines = []
+        in_admin_section = False
+        
+        for line in raw_config.splitlines():
+            if "config system admin" in line:
+                in_admin_section = True
+                admin_lines.append(line)
+            elif in_admin_section:
+                admin_lines.append(line)
+                if line.strip().startswith("edit "):
+                    admin_edit_count += 1
+                if line.strip() == "end":
+                    in_admin_section = False
+        
+        # Check if detected admins match parsed admins
+        parsing_issue = admin_edit_count > 0 and admin_count != admin_edit_count
+        
+        if parsing_issue:
+            status = CheckStatus.WARNING
+            details = f"Configuration parsing issue detected: Found {admin_edit_count} admin users in raw config, but only {admin_count} were parsed."
+            details += "\n\nThis may affect security check results, especially for admin-related checks."
+            
+            # Add details about the admin section for debugging
+            details += f"\n\nAdmin section in raw config ({len(admin_lines)} lines):"
+            for i, line in enumerate(admin_lines[:20]):  # Show max 20 lines
+                details += f"\n{i+1}: {line}"
+            if len(admin_lines) > 20:
+                details += f"\n... {len(admin_lines) - 20} more lines not shown."
+        else:
+            status = CheckStatus.INFO
+            details = f"Configuration parsing looks good. Found {admin_count} admin users."
+        
+        result = CheckResult(
+            id="DEBUG-01",
+            name="Configuration Parsing Validation",
+            description="Checks if configuration is being parsed correctly",
+            status=status,
+            details=details,
+            recommendation="If warnings are shown, examine the config parsing logic" if parsing_issue else None
+        )
+        
+        self.results.append(result)
+        return result
 
     def check_password_policy(self) -> CheckResult:
         """Check if password policy is enabled.
@@ -180,22 +243,54 @@ class HardeningChecker:
         admins = self.config_fetcher.get_system_admin()
         admins_without_2fa = []
         
+        # Debug information to help diagnose the issue
+        debug_info = []
+        debug_info.append(f"Number of admin users found: {len(admins)}")
+        
+        # Skip the check if no admin users are found (which indicates a config parsing issue)
+        if not admins:
+            result = CheckResult(
+                id="F-ADMIN-02",
+                name="Two-Factor Authentication",
+                description="Checks if two-factor authentication is enabled for admin users",
+                status=CheckStatus.WARNING,
+                details="No admin users found in configuration. This may indicate a configuration parsing issue.",
+                recommendation="Verify that admin users exist in the configuration and check the parsing logic."
+            )
+            self.results.append(result)
+            return result
+        
         for admin_name, admin in admins.items():
             two_factor = admin.get("two-factor", "disable")
+            debug_info.append(f"Admin: {admin_name}, 2FA: {two_factor}")
             if two_factor == "disable":
                 admins_without_2fa.append(admin_name)
         
-        result = CheckResult(
-            id="F-ADMIN-02",
-            name="Two-Factor Authentication",
-            description="Checks if two-factor authentication is enabled for admin users",
-            status=CheckStatus.PASS if not admins_without_2fa else CheckStatus.FAIL,
-            details=f"Found {len(admins_without_2fa)} admins without 2FA" if admins_without_2fa else "All admins have 2FA enabled",
-            recommendation="Enable two-factor authentication for all admin users"
-        )
+        # If all admins are missing 2FA, this is definitely a failure
+        if len(admins_without_2fa) == len(admins):
+            result = CheckResult(
+                id="F-ADMIN-02",
+                name="Two-Factor Authentication",
+                description="Checks if two-factor authentication is enabled for admin users",
+                status=CheckStatus.FAIL,
+                details=f"All admin users ({len(admins)}) have 2FA disabled: {', '.join(admins_without_2fa)}",
+                recommendation="Enable two-factor authentication for all admin users"
+            )
+        else:
+            result = CheckResult(
+                id="F-ADMIN-02",
+                name="Two-Factor Authentication",
+                description="Checks if two-factor authentication is enabled for admin users",
+                status=CheckStatus.PASS if not admins_without_2fa else CheckStatus.FAIL,
+                details=f"Found {len(admins_without_2fa)} admins without 2FA" if admins_without_2fa else "All admins have 2FA enabled",
+                recommendation="Enable two-factor authentication for all admin users"
+            )
+            
+            if admins_without_2fa:
+                result.details += f": {', '.join(admins_without_2fa)}"
         
-        if admins_without_2fa:
-            result.details += f": {', '.join(admins_without_2fa)}"
+        # Add debug information to the result
+        result.details += f"\n\nDebug info: {'; '.join(debug_info)}"
         
         self.results.append(result)
         return result
