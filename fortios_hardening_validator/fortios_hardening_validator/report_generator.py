@@ -51,9 +51,10 @@ class ReportGenerator:
         # Print the header
         self.console.print()
         header_text = Text("FortiOS Hardening Validator Report", style="bold white on blue")
+        creator = Text("Created by: Zarni (Neo)", style="magenta")
         timestamp = Text(f"Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}", style="cyan")
         header_panel = Panel(
-            Text.assemble(header_text, "\n", timestamp),
+            Text.assemble(header_text, "\n", creator, "\n", timestamp),
             border_style="blue",
             expand=False,
             padding=(1, 2)
@@ -224,6 +225,7 @@ class ReportGenerator:
         report = []
         report.append(sep_line)
         report.append("FortiOS Hardening Validator Report".center(line_length))
+        report.append("Created by: Zarni (Neo)".center(line_length))
         report.append(f"Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}".center(line_length))
         report.append(sep_line)
         report.append("")
@@ -398,6 +400,7 @@ class ReportGenerator:
         report = {
             "metadata": {
                 "generated_at": datetime.now().isoformat(),
+                "creator": "Zarni (Neo)",
                 "device": self.device_info,
             },
             "summary": {
