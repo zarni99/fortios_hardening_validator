@@ -23,7 +23,8 @@ __tool_name__ = "FortiOS Hardening Validator"
 
 app = typer.Typer(
     help=f"{__tool_name__}: Audit FortiGate devices against security best practices.\n"
-         f"Created by {__author__}."
+         f"Created by {__author__}.",
+    add_completion=False  # Hide the --install-completion and --show-completion options
 )
 console = Console()
 
