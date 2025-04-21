@@ -7,7 +7,7 @@ A Python CLI tool that connects to FortiGate devices and validates their configu
 - Securely connects to FortiGate devices using SSH
 - Fetches full configuration using `show full-configuration`
 - Parses configuration and validates against security best practices
-- Generates detailed reports in CLI or JSON format
+- Generates detailed reports in CLI, JSON, or plain text format
 - Configurable connection options (timeout, port)
 - Secure password handling with interactive prompt
 
@@ -60,12 +60,26 @@ fortios-audit --ip 192.168.1.1 --username admin --prompt-password
 # Output results in JSON format
 fortios-audit --ip 192.168.1.1 --username admin --prompt-password --format json
 
+# Output results in plain text format (good for text files)
+fortios-audit --ip 192.168.1.1 --username admin --prompt-password --format txt
+
 # Save report to a file
 fortios-audit --ip 192.168.1.1 --username admin --prompt-password --output-file report.json --format json
+
+# Save report as a text file
+fortios-audit --ip 192.168.1.1 --username admin --prompt-password --output-file report.txt --format txt
 
 # Full options list
 fortios-audit --help
 ```
+
+## Output Formats
+
+The tool supports three output formats:
+
+1. **CLI** (default): Rich formatted output with colors and styling for terminal viewing
+2. **JSON**: Structured data format for programmatic processing or integration with other tools
+3. **TXT**: Plain text format with ASCII borders, suitable for text files and legacy systems
 
 ## Project Structure
 
@@ -111,8 +125,11 @@ with SSHConnector("192.168.1.1", "admin", "password") as connector:
         "version": "v7.0.0",
     }
     report_generator = ReportGenerator(results, device_info)
+    
+    # Generate different report formats
     report_generator.generate_cli_report()  # Print to console
     json_report = report_generator.generate_json_report()  # Get JSON string
+    text_report = report_generator.generate_text_report()  # Get plain text
 ```
 
 ## Security Considerations
