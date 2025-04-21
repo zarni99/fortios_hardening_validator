@@ -60,9 +60,37 @@ def main(
     )
 ):
     """
-    FortiOS Hardening Validator: A tool for auditing FortiGate device security.
+    FortiOS Hardening Validator: A comprehensive security audit tool for FortiGate devices.
     
     Created by Zarni (Neo)
+    
+    DESCRIPTION:
+      This tool connects to a FortiGate device via SSH and performs security
+      configuration checks based on industry best practices and hardening guidelines.
+      It identifies security misconfigurations, weak settings, and potential 
+      vulnerabilities in the FortiGate configuration.
+    
+    USAGE EXAMPLES:
+      # Basic audit with interactive password prompt:
+      fortios-audit audit --ip 192.168.1.1 --username admin --prompt-password
+      
+      # Full audit with validation and debug information:
+      fortios-audit audit --ip 192.168.1.1 --username admin --password mypassword --validate --show-debug
+      
+      # Save audit results to a file:
+      fortios-audit audit --ip 192.168.1.1 --username admin --password mypassword --output-file report.txt
+      
+      # Generate JSON output:
+      fortios-audit audit --ip 192.168.1.1 --username admin --password mypassword --format json
+    
+    OUTPUT FORMATS:
+      - CLI: Rich terminal output with color formatting (default)
+      - JSON: Structured JSON data, useful for programmatic processing
+    
+    VALIDATION LEVELS:
+      - basic: Performs minimal validation checks (default)
+      - thorough: Performs more detailed validation
+      - paranoid: Performs extensive validation with higher sensitivity
     """
     pass
 
@@ -81,7 +109,37 @@ def audit(
     validation_level: str = typer.Option("basic", help=f"Validation level ({', '.join(VALID_VALIDATION_LEVELS)})"),
     show_debug: bool = typer.Option(False, help="Show debug information in check results"),
 ):
-    """Audit a FortiGate device against hardening best practices."""
+    """
+    Audit a FortiGate device against hardening best practices.
+    
+    This command connects to a FortiGate device via SSH, analyzes its configuration,
+    and generates a report of security issues found. The report includes:
+    
+    1. DEVICE INFORMATION: Basic details about the audited device
+    2. SUMMARY: Count of issues by severity (PASS, FAIL, WARNING, INFO)
+    3. HARDENING CHECK RESULTS: Detailed findings for each security check
+    4. VALIDATION RESULTS: Checks to verify the accuracy of the audit (if --validate is used)
+    
+    The checks include:
+      - Password policy settings
+      - Insecure protocol usage
+      - Certificate validity
+      - Admin user configuration (trusted hosts, two-factor)
+      - Cipher strength
+      - Logging configuration
+      - SSL VPN settings
+      - Session timeout settings
+    
+    Each finding includes:
+      - ID: Unique identifier for the check
+      - Status: PASS, FAIL, WARNING, or INFO
+      - Details: Information about the finding
+      - Recommendation: Suggested remediation steps
+    
+    SSH connection is required with admin privileges. For security, 
+    use --prompt-password instead of providing the password directly
+    in the command line.
+    """
     if prompt_password:
         password = getpass("Enter SSH password: ")
     

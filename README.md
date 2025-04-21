@@ -1,29 +1,32 @@
 # FortiOS Hardening Validator
 
-A Python CLI tool that connects to FortiGate devices and validates their configuration against FortiOS 7.6.0 hardening best practices.
+A comprehensive security audit tool for FortiGate devices - created by Zarni (Neo).
+
+This tool connects to a FortiGate device via SSH and performs security configuration checks based on industry best practices and hardening guidelines. It identifies security misconfigurations, weak settings, and potential vulnerabilities in the FortiGate configuration.
 
 ## Features
 
 - Securely connects to FortiGate devices using SSH
-- Fetches full configuration using `show full-configuration`
-- Parses configuration and validates against security best practices
+- Fetches full configuration and parses it intelligently
+- Validates configuration against security best practices
+- Detects multiple admin users and analyzes their security settings
 - Generates detailed reports in CLI or JSON format
-- Configurable connection options (timeout, port)
-- Secure password handling with interactive prompt
+- Validates results to ensure detection accuracy
+- Configurable connection options and report formats
 
 ## Security Checks
 
-| ID | Name | Description |
-|---|---|---|
-| F-PW-01 | Password Policy | Ensures password policy is enabled |
-| F-PROT-01 | Insecure Protocols | Checks if HTTP and Telnet are disabled on all interfaces |
-| F-CERT-01 | Admin Server Certificate | Validates HTTPS admin access uses proper certificates |
-| F-ADMIN-01 | Trusted Hosts | Verifies trusted hosts are configured for admin users |
-| F-ADMIN-02 | Two-Factor Authentication | Checks if 2FA is enabled for admin accounts |
-| F-CIPH-01 | Strong Ciphers | Validates only strong ciphers are in use (no RC4, MD5) |
-| F-LOG-01 | Logging | Confirms logging is enabled to FortiAnalyzer or syslog |
-| F-VPN-01 | SSL VPN Certificate | Checks if SSL VPN uses a valid certificate |
-| F-SESS-01 | Session Timeout | Verifies session timeout is configured and reasonably low |
+| ID | Name | Description | Severity |
+|---|---|---|---|
+| F-PW-01 | Password Policy | Ensures password policy is enabled | FAIL |
+| F-PROT-01 | Insecure Protocols | Checks if HTTP and Telnet are disabled on all interfaces | FAIL |
+| F-CERT-01 | Admin Server Certificate | Validates HTTPS admin access uses proper certificates | WARNING |
+| F-ADMIN-01 | Trusted Hosts | Verifies trusted hosts are configured for admin users | FAIL |
+| F-ADMIN-02 | Two-Factor Authentication | Checks if 2FA is enabled for admin accounts | FAIL |
+| F-CIPH-01 | Strong Ciphers | Validates only strong ciphers are in use (no RC4, MD5) | FAIL |
+| F-LOG-01 | Logging | Confirms logging is enabled to FortiAnalyzer or syslog | FAIL |
+| F-VPN-01 | SSL VPN Certificate | Checks if SSL VPN uses a valid certificate | WARNING |
+| F-SESS-01 | Session Timeout | Verifies session timeout is configured and reasonably low | FAIL/WARNING |
 
 ## Installation
 
@@ -40,43 +43,74 @@ pip install -r requirements.txt
 
 ## Usage
 
-### Option 1: Using the installed command (if installed via pip)
+### Basic Example
 
 ```bash
 # Basic usage with interactive password prompt (recommended)
-fortios-audit --ip 192.168.1.1 --username admin --prompt-password
-
-# Output results in JSON format
-fortios-audit --ip 192.168.1.1 --username admin --prompt-password --format json
-
-# Save report to a file
-fortios-audit --ip 192.168.1.1 --username admin --prompt-password --output-file report.json --format json
-
-# Full options list
-fortios-audit --help
+python fortios-audit.py audit --ip 192.168.1.1 --username admin --prompt-password
 ```
 
-### Option 2: Using the Python script directly
+### Comprehensive Examples
 
 ```bash
-# Basic usage
-python fortios-audit.py audit --ip 192.168.1.1 --username admin --password secret
+# Basic audit with interactive password prompt:
+python fortios-audit.py audit --ip 192.168.1.1 --username admin --prompt-password
 
-# Output results in JSON format
-python fortios-audit.py audit --ip 192.168.1.1 --username admin --password secret --format json
+# Full audit with validation and debug information:
+python fortios-audit.py audit --ip 192.168.1.1 --username admin --password mypassword --validate --show-debug
 
-# Save report to a file
-python fortios-audit.py audit --ip 192.168.1.1 --username admin --password secret --output-file report.json --format json
+# Save audit results to a file:
+python fortios-audit.py audit --ip 192.168.1.1 --username admin --password mypassword --output-file report.txt
 
-# Full options list
+# Generate JSON output:
+python fortios-audit.py audit --ip 192.168.1.1 --username admin --password mypassword --format json
+```
+
+### Get Help and Version Information
+
+```bash
+# Show comprehensive help information
+python fortios-audit.py --help
+
+# Show detailed help for the audit command
 python fortios-audit.py audit --help
+
+# Show tool version information
+python fortios-audit.py --version
 ```
 
 Note: For security reasons, using `--prompt-password` instead of providing the password directly in the command line is recommended.
 
-## Output Formats
+## Understanding the Output
 
-The tool supports two output formats:
+The audit report includes several sections:
+
+1. **Device Information**: Basic details about the audited device, including IP, hostname, and FortiOS version.
+   
+2. **Summary**: Count of issues by severity:
+   - PASS: The check was successful
+   - FAIL: A critical security issue was found
+   - WARNING: A potential security concern was identified
+   - INFO: Informational messages about the configuration
+
+3. **Hardening Check Results**: Detailed findings for each security check, including:
+   - ID: Unique identifier for the check
+   - Name: Short name describing the check
+   - Status: PASS, FAIL, WARNING, or INFO
+   - Details: Information about what was found
+   - Recommendation: Suggested steps to fix the issue
+
+4. **Validation Results** (if `--validate` is used): Additional checks to verify the accuracy of the audit process.
+
+## Validation Levels
+
+The tool supports different validation levels to verify audit accuracy:
+
+- **basic** (default): Performs minimal validation checks
+- **thorough**: Performs more detailed validation with more comprehensive checks
+- **paranoid**: Performs extensive validation with higher sensitivity (may produce false positives)
+
+## Output Formats
 
 1. **CLI** (default): Rich formatted output with colors and styling for terminal viewing
 2. **JSON**: Structured data format for programmatic processing or integration with other tools
@@ -91,6 +125,7 @@ fortios_hardening_validator/
 │   ├── ssh_connector.py         # SSH connection handling
 │   ├── config_fetcher.py        # Configuration retrieval
 │   ├── hardening_checks.py      # Security validation logic
+│   ├── validator.py             # Result validation logic
 │   └── report_generator.py      # Report formatting
 ├── fortios-audit.py             # Direct Python script entry point
 ├── README.md                    # Documentation
@@ -109,14 +144,17 @@ from fortios_hardening_validator.fortios_hardening_validator.hardening_checks im
 from fortios_hardening_validator.fortios_hardening_validator.report_generator import ReportGenerator
 
 # Connect to the device
-with SSHConnector("192.168.1.1", "admin", "password") as connector:
+connector = SSHConnector("192.168.1.1", "admin", "password")
+connector.connect()
+
+try:
     # Fetch and parse configuration
     config_fetcher = ConfigFetcher(connector)
     config_fetcher.fetch_config()
     config_fetcher.parse_config()
     
     # Run hardening checks
-    checker = HardeningChecker(config_fetcher)
+    checker = HardeningChecker(config_fetcher, show_debug=False)
     results = checker.run_all_checks()
     
     # Generate reports
@@ -130,6 +168,9 @@ with SSHConnector("192.168.1.1", "admin", "password") as connector:
     # Generate different report formats
     report_generator.generate_cli_report()  # Print to console
     json_report = report_generator.generate_json_report()  # Get JSON string
+finally:
+    # Ensure connection is closed
+    connector.disconnect()
 ```
 
 ## Security Considerations
@@ -137,4 +178,9 @@ with SSHConnector("192.168.1.1", "admin", "password") as connector:
 - Always use the `--prompt-password` option instead of providing passwords on the command line
 - Ensure you have proper authorization before auditing devices
 - Consider using a dedicated read-only account for auditing purposes
-- Review the JSON output files for sensitive information before sharing 
+- Review the JSON output files for sensitive information before sharing
+- Log connections appropriately according to your security policies
+
+## About the Creator
+
+FortiOS Hardening Validator was created by Zarni (Neo) to help security professionals validate FortiGate configurations against industry best practices.
