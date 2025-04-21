@@ -115,6 +115,10 @@ The tool supports different validation levels to verify audit accuracy:
 1. **CLI** (default): Rich formatted output with colors and styling for terminal viewing
 2. **JSON**: Structured data format for programmatic processing or integration with other tools
 
+## Testing
+
+![image](https://github.com/user-attachments/assets/0a1d2044-7b87-4a27-a693-d993ee64219d)
+
 ## Project Structure
 
 ```
