@@ -31,14 +31,16 @@ class CheckResult:
 class HardeningChecker:
     """Implements hardening checks for FortiOS."""
 
-    def __init__(self, config_fetcher: ConfigFetcher):
+    def __init__(self, config_fetcher: ConfigFetcher, show_debug: bool = False):
         """Initialize the hardening checker.
 
         Args:
             config_fetcher: ConfigFetcher instance
+            show_debug: Whether to include debug information in check results
         """
         self.config_fetcher = config_fetcher
         self.results: List[CheckResult] = []
+        self.show_debug = show_debug
 
     def run_all_checks(self) -> List[CheckResult]:
         """Run all hardening checks.
@@ -102,12 +104,13 @@ class HardeningChecker:
             details = f"Configuration parsing issue detected: Found {admin_edit_count} admin users in raw config, but only {admin_count} were parsed."
             details += "\n\nThis may affect security check results, especially for admin-related checks."
             
-            # Add details about the admin section for debugging
-            details += f"\n\nAdmin section in raw config ({len(admin_lines)} lines):"
-            for i, line in enumerate(admin_lines[:20]):  # Show max 20 lines
-                details += f"\n{i+1}: {line}"
-            if len(admin_lines) > 20:
-                details += f"\n... {len(admin_lines) - 20} more lines not shown."
+            # Add details about the admin section for debugging only if show_debug is True
+            if self.show_debug:
+                details += f"\n\nAdmin section in raw config ({len(admin_lines)} lines):"
+                for i, line in enumerate(admin_lines[:20]):  # Show max 20 lines
+                    details += f"\n{i+1}: {line}"
+                if len(admin_lines) > 20:
+                    details += f"\n... {len(admin_lines) - 20} more lines not shown."
         else:
             status = CheckStatus.INFO
             details = f"Configuration parsing looks good. Found {admin_count} admin users."
@@ -289,8 +292,9 @@ class HardeningChecker:
             if admins_without_2fa:
                 result.details += f": {', '.join(admins_without_2fa)}"
         
-        # Add debug information to the result
-        result.details += f"\n\nDebug info: {'; '.join(debug_info)}"
+        # Add debug information to the result only if show_debug is True
+        if self.show_debug:
+            result.details += f"\n\nDebug info: {'; '.join(debug_info)}"
         
         self.results.append(result)
         return result

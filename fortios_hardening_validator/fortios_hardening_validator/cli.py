@@ -35,6 +35,7 @@ def audit(
     output_file: Optional[str] = typer.Option(None, help="Save report to a file"),
     validate: bool = typer.Option(False, help="Validate check results for accuracy"),
     validation_level: str = typer.Option("basic", help=f"Validation level ({', '.join(VALID_VALIDATION_LEVELS)})"),
+    show_debug: bool = typer.Option(False, help="Show debug information in check results"),
 ):
     """Audit a FortiGate device against hardening best practices."""
     if prompt_password:
@@ -99,7 +100,7 @@ def audit(
 
         # Run hardening checks
         console.print("[bold]Running hardening checks...[/bold]")
-        checker = HardeningChecker(config_fetcher)
+        checker = HardeningChecker(config_fetcher, show_debug=show_debug)
         results = checker.run_all_checks()
         
         # Run result validation if requested
