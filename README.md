@@ -27,22 +27,11 @@ A Python CLI tool that connects to FortiGate devices and validates their configu
 
 ## Installation
 
-### Option 1: Install from the repository (recommended)
+### Install dependencies
 
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/fortios_hardening_validator.git
-cd fortios_hardening_validator
-
-# Install the package in development mode
-pip install -e .
-```
-
-### Option 2: Install dependencies only
-
-```bash
-# Clone the repository
-git clone https://github.com/yourusername/fortios_hardening_validator.git
+git clone https://github.com/zarni99/fortios_hardening_validator.git
 cd fortios_hardening_validator
 
 # Install dependencies
