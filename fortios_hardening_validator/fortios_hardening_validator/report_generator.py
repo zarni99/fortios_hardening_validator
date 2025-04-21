@@ -1,6 +1,7 @@
 """Report generator module for FortiOS Hardening Validator."""
 
 import json
+import io
 from datetime import datetime
 from typing import Dict, List, Any
 
@@ -156,6 +157,79 @@ class ReportGenerator:
             
         self.console.print()
 
+    def generate_text_report(self) -> str:
+        """Generate a plain text report.
+
+        Returns:
+            str: Plain text report suitable for .txt files
+        """
+        output = []
+        counts = self._count_results_by_status()
+        
+        # Header
+        output.append("=" * 80)
+        output.append("                     FORTIOS HARDENING VALIDATOR REPORT")
+        output.append("=" * 80)
+        output.append(f"Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+        output.append("")
+        
+        # Device information
+        output.append("-" * 80)
+        output.append("DEVICE INFORMATION")
+        output.append("-" * 80)
+        output.append(f"IP Address:      {self.device_info.get('ip', 'N/A')}")
+        output.append(f"Hostname:        {self.device_info.get('hostname', 'N/A')}")
+        output.append(f"FortiOS Version: {self.device_info.get('version', 'N/A')}")
+        output.append("")
+        
+        # Summary
+        output.append("-" * 80)
+        output.append("SUMMARY")
+        output.append("-" * 80)
+        output.append(f"Total checks: {len(self.results)}")
+        output.append(f"PASS:         {counts[CheckStatus.PASS.value]}")
+        output.append(f"FAIL:         {counts[CheckStatus.FAIL.value]}")
+        output.append(f"WARNING:      {counts[CheckStatus.WARNING.value]}")
+        output.append(f"INFO:         {counts[CheckStatus.INFO.value]}")
+        output.append("")
+        
+        # Detailed results
+        output.append("-" * 80)
+        output.append("HARDENING CHECK RESULTS")
+        output.append("-" * 80)
+        
+        # Table headers with fixed width formatting
+        output.append(f"{'ID':<12} {'Name':<25} {'Status':<10} {'Details':<35} {'Recommendation':<35}")
+        output.append("-" * 120)
+        
+        # Table rows
+        for result in self.results:
+            # Format each column with appropriate width and wrapping
+            id_col = f"{result.id:<12}"
+            name_col = f"{result.name:<25}"
+            status_col = f"{result.status.value:<10}"
+            
+            # Handle potential wrapping for long text
+            details = result.details or ""
+            recommendation = result.recommendation or ""
+            
+            # Add the row
+            output.append(f"{id_col} {name_col} {status_col} {details:<35} {recommendation:<35}")
+        
+        output.append("")
+        output.append("-" * 80)
+        
+        # Conclusion
+        if counts[CheckStatus.FAIL.value] > 0 or counts[CheckStatus.WARNING.value] > 0:
+            output.append("RECOMMENDATION: Please address the FAIL and WARNING items to improve your FortiGate security posture.")
+        else:
+            output.append("CONCLUSION: Congratulations! Your FortiGate device meets all hardening requirements.")
+        
+        output.append("-" * 80)
+        output.append("")
+        
+        return "\n".join(output)
+
     def generate_json_report(self) -> str:
         """Generate a JSON report.
 
@@ -195,13 +269,16 @@ class ReportGenerator:
         """Generate a report in the specified format.
 
         Args:
-            format: Report format ("cli" or "json")
+            format: Report format ("cli", "json", or "txt")
 
         Returns:
-            str: Report as a string for JSON format, empty string for CLI format
+            str: Report as a string for JSON or TXT format, empty string for CLI format
         """
-        if format.lower() == "json":
+        format = format.lower()
+        if format == "json":
             return self.generate_json_report()
+        elif format == "txt":
+            return self.generate_text_report()
         else:
             self.generate_cli_report()
             return "" 

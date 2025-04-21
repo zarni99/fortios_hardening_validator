@@ -1,7 +1,7 @@
 """CLI module for FortiOS Hardening Validator."""
 
 import sys
-from typing import Optional
+from typing import Optional, List
 
 import typer
 from rich.console import Console
@@ -15,6 +15,9 @@ from .report_generator import ReportGenerator
 app = typer.Typer(help="Validate FortiOS hardening best practices.")
 console = Console()
 
+# List of valid output formats
+VALID_FORMATS = ["cli", "json", "txt"]
+
 
 @app.command("audit")
 def audit(
@@ -23,7 +26,7 @@ def audit(
     password: Optional[str] = typer.Option(None, help="SSH password (not recommended, use --prompt-password instead)"),
     port: int = typer.Option(22, help="SSH port"),
     timeout: int = typer.Option(60, help="Connection timeout in seconds"),
-    format: str = typer.Option("cli", help="Output format (cli or json)"),
+    format: str = typer.Option("cli", help=f"Output format ({', '.join(VALID_FORMATS)})"),
     prompt_password: bool = typer.Option(False, help="Prompt for password"),
     output_file: Optional[str] = typer.Option(None, help="Save report to a file"),
 ):
@@ -33,6 +36,11 @@ def audit(
     
     if not password:
         console.print("[bold red]Error: Password is required.[/bold red]")
+        sys.exit(1)
+        
+    # Validate format
+    if format.lower() not in VALID_FORMATS:
+        console.print(f"[bold red]Error: Invalid format. Valid formats are: {', '.join(VALID_FORMATS)}[/bold red]")
         sys.exit(1)
 
     try:
@@ -77,7 +85,7 @@ def audit(
         if output_file:
             console.print(f"[bold]Saving report to {output_file}...[/bold]")
             with open(output_file, "w") as f:
-                if format.lower() == "json":
+                if format.lower() in ["json", "txt"]:
                     f.write(report)
                 else:
                     # Capture console output for CLI format
@@ -97,7 +105,8 @@ def audit(
         # Disconnect
         connector.disconnect()
         
-        if format.lower() == "json" and not output_file:
+        # Print report to console for JSON and TXT formats when not saving to file
+        if format.lower() in ["json", "txt"] and not output_file:
             console.print(report)
 
     except Exception as e:
