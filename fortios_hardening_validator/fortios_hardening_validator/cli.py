@@ -12,12 +12,15 @@ from .ssh_connector import SSHConnector
 from .config_fetcher import ConfigFetcher
 from .hardening_checks import HardeningChecker
 from .report_generator import ReportGenerator
+from .validator import ResultValidator
 
 app = typer.Typer(help="Validate FortiOS hardening best practices.")
 console = Console()
 
 # List of valid output formats
 VALID_FORMATS = ["cli", "json"]
+# Validation levels
+VALID_VALIDATION_LEVELS = ["basic", "thorough", "paranoid"]
 
 
 @app.command("audit")
@@ -30,6 +33,8 @@ def audit(
     format: str = typer.Option("cli", help=f"Output format ({', '.join(VALID_FORMATS)})"),
     prompt_password: bool = typer.Option(False, help="Prompt for password"),
     output_file: Optional[str] = typer.Option(None, help="Save report to a file"),
+    validate: bool = typer.Option(False, help="Validate check results for accuracy"),
+    validation_level: str = typer.Option("basic", help=f"Validation level ({', '.join(VALID_VALIDATION_LEVELS)})"),
 ):
     """Audit a FortiGate device against hardening best practices."""
     if prompt_password:
@@ -42,6 +47,11 @@ def audit(
     # Validate format
     if format.lower() not in VALID_FORMATS:
         console.print(f"[bold red]Error: Invalid format. Valid formats are: {', '.join(VALID_FORMATS)}[/bold red]")
+        sys.exit(1)
+    
+    # Validate validation level
+    if validation_level.lower() not in VALID_VALIDATION_LEVELS:
+        console.print(f"[bold red]Error: Invalid validation level. Valid levels are: {', '.join(VALID_VALIDATION_LEVELS)}[/bold red]")
         sys.exit(1)
 
     try:
@@ -91,6 +101,20 @@ def audit(
         console.print("[bold]Running hardening checks...[/bold]")
         checker = HardeningChecker(config_fetcher)
         results = checker.run_all_checks()
+        
+        # Run result validation if requested
+        if validate:
+            console.print(f"[bold]Validating results with {validation_level} level...[/bold]")
+            validator = ResultValidator(config_fetcher, checker)
+            validation_results = validator.validate_all(level=validation_level)
+            
+            # Add validation results to main results
+            results.extend(validation_results)
+            
+            # Show warning if any validation issues found
+            validation_warnings = [r for r in validation_results if r.status == CheckStatus.WARNING]
+            if validation_warnings:
+                console.print(f"[bold yellow]⚠️ Found {len(validation_warnings)} validation warnings![/bold yellow]")
 
         # Generate report
         console.print("[bold]Generating report...[/bold]")
