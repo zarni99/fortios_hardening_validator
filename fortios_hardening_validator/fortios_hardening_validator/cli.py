@@ -6,21 +6,65 @@ from typing import Optional, Dict, Any
 
 import typer
 from rich.console import Console
+from rich.text import Text
+from rich.panel import Panel
 from getpass import getpass
 
 from .ssh_connector import SSHConnector
 from .config_fetcher import ConfigFetcher
-from .hardening_checks import HardeningChecker
+from .hardening_checks import HardeningChecker, CheckStatus
 from .report_generator import ReportGenerator
 from .validator import ResultValidator
 
-app = typer.Typer(help="Validate FortiOS hardening best practices.")
+# Tool metadata
+__version__ = "1.0.0"
+__author__ = "Zarni (Neo)"
+__tool_name__ = "FortiOS Hardening Validator"
+
+app = typer.Typer(
+    help=f"{__tool_name__}: Audit FortiGate devices against security best practices.\n"
+         f"Created by {__author__}."
+)
 console = Console()
 
 # List of valid output formats
 VALID_FORMATS = ["cli", "json"]
 # Validation levels
 VALID_VALIDATION_LEVELS = ["basic", "thorough", "paranoid"]
+
+
+def version_callback(value: bool):
+    """Display version information and exit."""
+    if value:
+        panel = Panel(
+            Text.assemble(
+                Text(f"{__tool_name__}\n", style="bold white"),
+                Text(f"Version: {__version__}\n", style="cyan"),
+                Text(f"Created by: {__author__}", style="magenta")
+            ),
+            border_style="blue",
+            expand=False,
+            padding=(1, 2)
+        )
+        console.print(panel)
+        raise typer.Exit()
+
+
+@app.callback()
+def main(
+    version: bool = typer.Option(
+        False, "--version", "-v", 
+        help="Show version information and exit.", 
+        callback=version_callback,
+        is_eager=True
+    )
+):
+    """
+    FortiOS Hardening Validator: A tool for auditing FortiGate device security.
+    
+    Created by Zarni (Neo)
+    """
+    pass
 
 
 @app.command("audit")
